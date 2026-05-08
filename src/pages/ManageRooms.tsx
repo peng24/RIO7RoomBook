@@ -11,9 +11,10 @@ import {
   query,
   orderBy
 } from 'firebase/firestore';
+import Swal from 'sweetalert2';
 
 // Google Calendar Event Color IDs mapping
-export const GOOGLE_COLORS = [
+const GOOGLE_COLORS = [
   { id: '1', name: 'Lavender', hex: '#7986cb' },
   { id: '2', name: 'Sage', hex: '#33b679' },
   { id: '3', name: 'Grape', hex: '#8e24aa' },
@@ -101,21 +102,33 @@ const ManageRooms: React.FC = () => {
         await addDoc(collection(db, 'rooms'), formData);
       }
       closeModal();
+      Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', showConfirmButton: false, timer: 1500 });
     } catch (error) {
       console.error('Error saving room:', error);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล', confirmButtonText: 'ตกลง' });
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('คุณต้องการลบห้องประชุมนี้ใช่หรือไม่? ข้อมูลใน Firestore จะถูกลบถาวร')) {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'ลบห้องประชุม?',
+      text: 'คุณต้องการลบห้องประชุมนี้ใช่หรือไม่? ข้อมูลใน Firestore จะถูกลบถาวร',
+      showCancelButton: true,
+      confirmButtonText: 'ใช่, ลบเลย',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#ef4444'
+    });
+
+    if (result.isConfirmed) {
       try {
         await deleteDoc(doc(db, 'rooms', id));
+        Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', showConfirmButton: false, timer: 1500 });
       } catch (error) {
         console.error('Error deleting room:', error);
-        alert('เกิดข้อผิดพลาดในการลบข้อมูล');
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'เกิดข้อผิดพลาดในการลบข้อมูล', confirmButtonText: 'ตกลง' });
       }
     }
   };

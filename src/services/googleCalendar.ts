@@ -7,11 +7,10 @@ const HOLIDAY_CALENDAR_ID = import.meta.env.VITE_HOLIDAY_CALENDAR_ID;
 
 /**
  * Fetch events from the main calendar (sarabun07@gmail.com).
- * Always uses API key to ensure we get data from the correct calendar,
- * not the logged-in user's personal calendar.
+ * Always uses API key to read from the specific CALENDAR_ID.
+ * Bearer token is NOT used here — it would redirect reads to the logged-in user's personal calendar.
  */
-export const fetchEvents = async (accessToken?: string) => {
-  // Calculate time range: 3 months back to 12 months forward
+export const fetchEvents = async () => {
   const now = new Date();
   const timeMin = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString();
   const timeMax = new Date(now.getFullYear(), now.getMonth() + 12, 0).toISOString();
@@ -29,15 +28,14 @@ export const fetchEvents = async (accessToken?: string) => {
   const queryString = new URLSearchParams(params).toString();
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${queryString}`;
 
-  // Use access token if available for write operations,
-  // but always target the specific CALENDAR_ID
-  const headers: Record<string, string> = {};
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
+  try {
+    const response = await axios.get(url);
+    console.log(`[Events] fetched ${response.data.items?.length ?? 0} events`);
+    return (response.data.items || []) as GoogleCalendarEvent[];
+  } catch (err: any) {
+    console.error('[Events] fetch error:', err?.response?.data || err.message);
+    return [] as GoogleCalendarEvent[];
   }
-
-  const response = await axios.get(url, { headers });
-  return (response.data.items || []) as GoogleCalendarEvent[];
 };
 
 /**
@@ -45,8 +43,8 @@ export const fetchEvents = async (accessToken?: string) => {
  */
 export const fetchHolidays = async () => {
   const now = new Date();
-  const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-  const timeMax = new Date(now.getFullYear(), now.getMonth() + 12, 0).toISOString();
+  const timeMin = new Date(now.getFullYear(), 0, 1).toISOString();
+  const timeMax = new Date(now.getFullYear() + 1, 11, 31).toISOString();
 
   const params: Record<string, string> = {
     key: API_KEY,
@@ -54,15 +52,22 @@ export const fetchHolidays = async () => {
     timeMax,
     singleEvents: 'true',
     orderBy: 'startTime',
-    maxResults: '100',
-    timeZone: 'Asia/Bangkok',
+    maxResults: '200',
   };
 
   const queryString = new URLSearchParams(params).toString();
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(HOLIDAY_CALENDAR_ID)}/events?${queryString}`;
+  // Holiday calendar IDs with @import must be double-encoded for the URL path
+  const encodedId = encodeURIComponent(HOLIDAY_CALENDAR_ID);
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodedId}/events?${queryString}`;
 
-  const response = await axios.get(url);
-  return (response.data.items || []) as GoogleCalendarEvent[];
+  try {
+    const response = await axios.get(url);
+    console.log(`[Holidays] fetched ${response.data.items?.length ?? 0} events`);
+    return (response.data.items || []) as GoogleCalendarEvent[];
+  } catch (err: any) {
+    console.error('[Holidays] fetch error:', err?.response?.data || err.message);
+    return [] as GoogleCalendarEvent[];
+  }
 };
 
 export const createEvent = async (accessToken: string, event: Partial<GoogleCalendarEvent>) => {

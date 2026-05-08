@@ -40,14 +40,16 @@ const Sidebar: React.FC = () => {
   return (
     <div className="w-64 h-screen flex flex-col shrink-0" style={{ background: 'var(--bg-sidebar)' }}>
       {/* Logo */}
-      <div className="p-6 pb-8">
+      <div className="p-5 pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: 'var(--accent-gradient)' }}>
-            RB
-          </div>
+          <img
+            src="/logo.png"
+            alt="RIO7"
+            className="w-10 h-10 object-contain"
+          />
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight">
-              Room<span style={{ color: '#60a5fa' }}>Book</span>
+              RIO<span style={{ color: '#60a5fa' }}>7</span>
             </h1>
             <p className="text-[10px] text-slate-500 font-medium">ระบบจองห้องประชุม</p>
           </div>
@@ -95,11 +97,9 @@ const Sidebar: React.FC = () => {
       {/* Footer */}
       <div className="p-4 border-t border-white/5">
         <div className="flex items-center gap-3 px-2 py-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ background: 'var(--accent-gradient)' }}>
-            RB
-          </div>
+          <img src="/logo.png" alt="RIO7" className="w-8 h-8 object-contain" />
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium text-white truncate">Room Book</p>
+            <p className="text-sm font-medium text-white truncate">RIO7</p>
             <p className="text-[10px] text-slate-500 truncate">v1.0.0</p>
           </div>
         </div>

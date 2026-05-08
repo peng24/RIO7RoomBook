@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -17,7 +17,7 @@ function App() {
   return (
     <ThemeProvider>
       <GoogleAuthProvider>
-        <BrowserRouter>
+        <HashRouter>
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<BookingCalendar />} />
@@ -30,7 +30,7 @@ function App() {
               <Route path="settings" element={<Settings />} />
             </Route>
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </GoogleAuthProvider>
     </ThemeProvider>
   );

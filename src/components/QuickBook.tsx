@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronRight, Paperclip, Loader2, CalendarOff } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -8,6 +8,11 @@ import { uploadFile, getFileLink } from '../services/googleDrive';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import Swal from 'sweetalert2';
+
+const MONTHS_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+// ลำดับห้องที่ต้องการ
+const ROOM_ORDER = ['ห้องประชุม SWOC7', 'ห้องประชุมเล็ก', 'ห้องประชุมรวงผึ้ง (ห้องออกแบบ)'];
 
 interface QuickBookProps {
   isPage?: boolean;
@@ -25,16 +30,32 @@ const QuickBook: React.FC<QuickBookProps> = ({ isPage = false }) => {
   const { upcomingEvents, refresh } = useCalendarEvents();
   const [loading, setLoading] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
+
+  const now = new Date();
   const [formData, setFormData] = useState({
     room: '',
-    date: new Date().toISOString().split('T')[0],
-    start: '09:00',
-    end: '10:00',
+    day: now.getDate(),
+    month: now.getMonth(),   // 0-indexed
+    year: now.getFullYear(),
+    startHour: '09',
+    startMin: '00',
+    endHour: '10',
+    endMin: '00',
     title: '',
   });
   const [file, setFile] = useState<File | null>(null);
+  
+  const [meetingFormat, setMeetingFormat] = useState('ประชุม');
+  const [otherMeetingFormat, setOtherMeetingFormat] = useState('');
 
-  // Fetch active rooms from Firestore
+  const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 1 + i);
+  const daysInMonth = useMemo(() => {
+    return new Date(formData.year, formData.month + 1, 0).getDate();
+  }, [formData.year, formData.month]);
+  const hours = Array.from({ length: 13 }, (_, i) => String(i + 7).padStart(2, '0'));  // 07-19
+  const minutes = ['00', '15', '30', '45'];
+
+  // Fetch active rooms from Firestore, sorted by preferred order
   useEffect(() => {
     const q = query(collection(db, 'rooms'), where('status', '==', 'Active'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -42,35 +63,69 @@ const QuickBook: React.FC<QuickBookProps> = ({ isPage = false }) => {
         id: doc.id,
         ...doc.data()
       })) as Room[];
-      setRooms(roomList);
-      if (roomList.length > 0 && !formData.room) {
-        setFormData(prev => ({ ...prev, room: roomList[0].name }));
+      // เรียงตามลำดับที่กำหนด
+      const sorted = [...roomList].sort((a, b) => {
+        const ai = ROOM_ORDER.findIndex(r => a.name.includes(r.split(' ')[1]));
+        const bi = ROOM_ORDER.findIndex(r => b.name.includes(r.split(' ')[1]));
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      });
+      setRooms(sorted);
+      if (sorted.length > 0 && !formData.room) {
+        setFormData(prev => ({ ...prev, room: sorted[0].name }));
       }
     });
-
     return () => unsubscribe();
-  }, [formData.room]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAuthenticated) return alert('กรุณาเข้าสู่ระบบก่อนจอง');
-    if (!formData.room) return alert('กรุณาเลือกห้องประชุม');
+    if (!isAuthenticated) return Swal.fire({ icon: 'error', title: 'กรุณาเข้าสู่ระบบก่อนจอง', confirmButtonText: 'ตกลง' });
+    if (!formData.room) return Swal.fire({ icon: 'warning', title: 'กรุณาเลือกห้องประชุม', confirmButtonText: 'ตกลง' });
     
+    const finalMeetingFormat = meetingFormat === 'อื่นๆ' ? (otherMeetingFormat.trim() || 'อื่นๆ') : meetingFormat;
+
     setLoading(true);
+    Swal.fire({
+      title: 'กำลังดำเนินการ...',
+      html: file ? 'กำลังอัปโหลดไฟล์และสร้างการจอง' : 'กำลังสร้างการจองห้องประชุม',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
     try {
       let fileUrl = '';
       if (file) {
-        const uploadResult = await uploadFile(accessToken!, file);
-        fileUrl = await getFileLink(accessToken!, uploadResult.id);
+        try {
+          const uploadResult = await uploadFile(accessToken!, file);
+          fileUrl = await getFileLink(accessToken!, uploadResult.id);
+        } catch (uploadError: any) {
+          console.error('File upload failed:', uploadError);
+          const result = await Swal.fire({
+            icon: 'warning',
+            title: 'อัปโหลดไฟล์ไม่สำเร็จ',
+            text: 'ไม่สามารถอัปโหลดไฟล์แนบได้เนื่องจากไม่มีสิทธิ์เข้าถึง Google Drive คุณต้องการดำเนินการจองห้องประชุมต่อโดยไม่มีไฟล์แนบหรือไม่?',
+            showCancelButton: true,
+            confirmButtonText: 'ดำเนินการต่อ',
+            cancelButtonText: 'ยกเลิก'
+          });
+          
+          if (!result.isConfirmed) {
+            setLoading(false);
+            return;
+          }
+        }
       }
 
-      const startDateTime = new Date(`${formData.date}T${formData.start}:00`).toISOString();
-      const endDateTime = new Date(`${formData.date}T${formData.end}:00`).toISOString();
+      const dateStr = `${formData.year}-${String(formData.month + 1).padStart(2,'0')}-${String(formData.day).padStart(2,'0')}`;
+      const startDateTime = new Date(`${dateStr}T${formData.startHour}:${formData.startMin}:00`).toISOString();
+      const endDateTime   = new Date(`${dateStr}T${formData.endHour}:${formData.endMin}:00`).toISOString();
 
       const selectedRoom = rooms.find(r => r.name === formData.room);
 
       await createEvent(accessToken!, {
-        summary: `[${formData.room}] ${formData.title || 'จองห้องประชุม'}`,
+        summary: `[${finalMeetingFormat}] ${formData.title || 'จองห้องประชุม'}`,
         description: fileUrl ? `ไฟล์แนบ: ${fileUrl}` : 'ไม่มีไฟล์แนบ',
         location: formData.room,
         start: { dateTime: startDateTime, timeZone: 'Asia/Bangkok' },
@@ -78,13 +133,25 @@ const QuickBook: React.FC<QuickBookProps> = ({ isPage = false }) => {
         colorId: selectedRoom?.colorId || '7',
       });
 
-      alert('จองห้องประชุมสำเร็จ!');
+      Swal.fire({
+        icon: 'success',
+        title: 'จองห้องประชุมสำเร็จ!',
+        showConfirmButton: false,
+        timer: 2000
+      });
       setFormData({ ...formData, title: '' });
       setFile(null);
+      setOtherMeetingFormat('');
       refresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error booking room:', error);
-      alert('เกิดข้อผิดพลาดในการจอง');
+      if (error?.response?.status === 401) {
+        Swal.fire({ icon: 'error', title: 'เซสชั่นหมดอายุ', text: 'กรุณา "ออกจากระบบ" และเข้าสู่ระบบใหม่อีกครั้ง', confirmButtonText: 'ตกลง' });
+      } else if (error?.response?.status === 403) {
+        Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์เข้าถึง (403)', text: 'ไม่มีสิทธิ์เข้าถึง Google Calendar กรุณาตรวจสอบว่าได้เปิดใช้ Google Calendar API ใน Cloud Console แล้ว', confirmButtonText: 'ตกลง' });
+      } else {
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'เกิดข้อผิดพลาดในการจอง กรุณาลองใหม่อีกครั้ง', confirmButtonText: 'ตกลง' });
+      }
     } finally {
       setLoading(false);
     }
@@ -127,20 +194,46 @@ const QuickBook: React.FC<QuickBookProps> = ({ isPage = false }) => {
           </h3>
         )}
         <form className={`space-y-4 ${isPage ? 'grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6' : ''}`} onSubmit={handleSubmit}>
-          <div className={isPage ? 'md:col-span-2' : ''}>
-            <label style={labelStyle}>หัวข้อการประชุม</label>
-            <input 
-              type="text" 
-              placeholder="ระบุหัวข้อ..."
-              style={inputStyle}
-              value={formData.title}
-              onChange={(e) => setFormData({...formData, title: e.target.value})}
-              required
-            />
+          <div className={isPage ? 'md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6' : 'space-y-4'}>
+            <div>
+              <label style={labelStyle}>หัวข้อการประชุม</label>
+              <input 
+                type="text" 
+                placeholder="ระบุหัวข้อ..."
+                style={inputStyle}
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                required
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>รูปแบบการประชุม</label>
+              <div className="flex gap-2" style={{ marginTop: '4px' }}>
+                <select
+                  style={{ ...inputStyle, marginTop: 0 }}
+                  value={meetingFormat}
+                  onChange={(e) => setMeetingFormat(e.target.value)}
+                >
+                  <option value="ประชุม">ประชุม</option>
+                  <option value="Zoom">Zoom</option>
+                  <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+                {meetingFormat === 'อื่นๆ' && (
+                  <input
+                    type="text"
+                    placeholder="ระบุรูปแบบ..."
+                    style={{ ...inputStyle, marginTop: 0 }}
+                    value={otherMeetingFormat}
+                    onChange={(e) => setOtherMeetingFormat(e.target.value)}
+                    required
+                  />
+                )}
+              </div>
+            </div>
           </div>
           <div>
             <label style={labelStyle}>เลือกห้อง</label>
-            <select 
+            <select
               style={inputStyle}
               value={formData.room}
               onChange={(e) => setFormData({...formData, room: e.target.value})}
@@ -148,36 +241,48 @@ const QuickBook: React.FC<QuickBookProps> = ({ isPage = false }) => {
               {rooms.map(room => <option key={room.id} value={room.name}>{room.name}</option>)}
             </select>
           </div>
+
+          {/* Thai Date Picker */}
           <div>
             <label style={labelStyle}>วันที่</label>
-            <input 
-              type="date" 
-              style={inputStyle}
-              value={formData.date}
-              onChange={(e) => setFormData({...formData, date: e.target.value})}
-              required
-            />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1.5fr', gap: '6px', marginTop: '4px' }}>
+              <select style={inputStyle} value={formData.day} onChange={e => setFormData({...formData, day: Number(e.target.value)})}>
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <select style={inputStyle} value={formData.month} onChange={e => setFormData({...formData, month: Number(e.target.value), day: 1})}>
+                {MONTHS_TH.map((m, i) => <option key={i} value={i}>{m}</option>)}
+              </select>
+              <select style={inputStyle} value={formData.year} onChange={e => setFormData({...formData, year: Number(e.target.value)})}>
+                {years.map(y => <option key={y} value={y}>{y + 543}</option>)}
+              </select>
+            </div>
           </div>
+
+          {/* Thai Time Pickers */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={labelStyle}>เริ่ม</label>
-              <input 
-                type="time" 
-                style={inputStyle}
-                value={formData.start}
-                onChange={(e) => setFormData({...formData, start: e.target.value})}
-                required
-              />
+              <label style={labelStyle}>เวลาเริ่ม</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginTop: '4px' }}>
+                <select style={inputStyle} value={formData.startHour} onChange={e => setFormData({...formData, startHour: e.target.value})}>
+                  {hours.map(h => <option key={h} value={h}>{h} น.</option>)}
+                </select>
+                <select style={inputStyle} value={formData.startMin} onChange={e => setFormData({...formData, startMin: e.target.value})}>
+                  {minutes.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
             </div>
             <div>
-              <label style={labelStyle}>ถึง</label>
-              <input 
-                type="time" 
-                style={inputStyle}
-                value={formData.end}
-                onChange={(e) => setFormData({...formData, end: e.target.value})}
-                required
-              />
+              <label style={labelStyle}>เวลาสิ้นสุด</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginTop: '4px' }}>
+                <select style={inputStyle} value={formData.endHour} onChange={e => setFormData({...formData, endHour: e.target.value})}>
+                  {hours.map(h => <option key={h} value={h}>{h} น.</option>)}
+                </select>
+                <select style={inputStyle} value={formData.endMin} onChange={e => setFormData({...formData, endMin: e.target.value})}>
+                  {minutes.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
             </div>
           </div>
           <div>

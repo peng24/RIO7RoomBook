@@ -25,4 +25,5 @@ export interface GoogleCalendarEvent {
     timeZone?: string;
   };
   location?: string;
+  colorId?: string;
 }

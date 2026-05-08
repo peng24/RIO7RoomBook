@@ -6,7 +6,8 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useCalendarEvents, type FormattedEvent } from '../hooks/useCalendarEvents';
 import { useAuth } from '../context/GoogleAuthContext';
 import { updateEvent, deleteEvent } from '../services/googleCalendar';
-import { X, Clock, MapPin, AlignLeft, Edit2, Trash2, Save, Loader2 } from 'lucide-react';
+import { X, Clock, MapPin, AlignLeft, Edit2, Trash2, Save, Loader2, Paperclip, AlertCircle } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 const locales = {
   'th': th,
@@ -22,11 +23,13 @@ const localizer = dateFnsLocalizer({
 
 const MyCalendar: React.FC = () => {
   const [view, setView] = useState<any>(Views.MONTH);
-  const { events, refresh } = useCalendarEvents();
+  const { events, refresh, loading: eventsLoading, error } = useCalendarEvents();
   const { isAuthenticated, accessToken } = useAuth();
   const [selectedEvent, setSelectedEvent] = useState<FormattedEvent | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showMoreEvents, setShowMoreEvents] = useState<FormattedEvent[] | null>(null);
+  const [showMoreDate, setShowMoreDate] = useState<Date | null>(null);
   const [editData, setEditData] = useState({
     title: '',
     description: '',
@@ -55,6 +58,11 @@ const MyCalendar: React.FC = () => {
   const handleUpdate = async () => {
     if (!selectedEvent || !accessToken) return;
     setLoading(true);
+    Swal.fire({
+      title: 'กำลังบันทึก...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
     try {
       await updateEvent(accessToken, selectedEvent.id, {
         summary: editData.title,
@@ -66,33 +74,85 @@ const MyCalendar: React.FC = () => {
       refresh();
       setSelectedEvent(null);
       setIsEditing(false);
+      Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', showConfirmButton: false, timer: 1500 });
     } catch (error) {
       console.error('Error updating event:', error);
-      alert('เกิดข้อผิดพลาดในการแก้ไขการจอง');
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถแก้ไขการจองได้', confirmButtonText: 'ตกลง' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!selectedEvent || !accessToken || !window.confirm('คุณต้องการลบการจองนี้ใช่หรือไม่?')) return;
+    if (!selectedEvent || !accessToken) return;
+    
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'ลบการจอง?',
+      text: 'คุณต้องการลบการจองนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถยกเลิกได้',
+      showCancelButton: true,
+      confirmButtonText: 'ใช่, ลบเลย',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#ef4444'
+    });
+
+    if (!result.isConfirmed) return;
+
     setLoading(true);
+    Swal.fire({
+      title: 'กำลังลบ...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
     try {
       await deleteEvent(accessToken, selectedEvent.id);
       refresh();
       setSelectedEvent(null);
+      Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', showConfirmButton: false, timer: 1500 });
     } catch (error) {
       console.error('Error deleting event:', error);
-      alert('เกิดข้อผิดพลาดในการลบการจอง');
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถลบการจองได้', confirmButtonText: 'ตกลง' });
     } finally {
       setLoading(false);
     }
   };
 
+  const renderDescription = (text: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urls = text.match(urlRegex) || [];
+    const plainText = text.replace(urlRegex, '').trim();
+
+    return (
+      <div className="flex flex-col gap-2 w-full">
+        {plainText && <div className="whitespace-pre-wrap">{plainText}</div>}
+        {urls.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-1">
+            {urls.map((url, i) => (
+               <a 
+                 key={i} 
+                 href={url} 
+                 target="_blank" 
+                 rel="noopener noreferrer" 
+                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 hover:text-blue-700 transition-colors"
+               >
+                  <Paperclip size={14} />
+                  เปิดดูไฟล์แนบ {urls.length > 1 ? i + 1 : ''}
+               </a>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="glass-card p-6 h-full relative" style={{ minHeight: '700px' }}>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>ปฏิทินการจอง</h2>
+    <div className="glass-card p-6 h-full relative flex flex-col" style={{ minHeight: '700px' }}>
+      <div className="flex justify-between items-center mb-6 shrink-0">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>ปฏิทินการจอง</h2>
+          {eventsLoading && <Loader2 size={18} className="animate-spin text-blue-500" />}
+        </div>
         <div className="flex gap-2">
           {['Day', 'Week', 'Month'].map((v) => (
             <button
@@ -105,88 +165,112 @@ const MyCalendar: React.FC = () => {
                   : { background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }
               }
             >
-              {v === 'Day' ? 'วัน' : v === 'Week' ? 'สัปดาห์' : 'เดือน'}
+              {v === 'Day' ? 'วัน' : v === 'Week' ? 'สัปดาห์' : v === 'Month' ? 'เดือน' : v}
             </button>
           ))}
         </div>
       </div>
-      <Calendar
-        localizer={localizer}
-        events={calendarEvents}
-        startAccessor="start"
-        endAccessor="end"
-        view={view}
-        onView={(newView) => setView(newView)}
-        onSelectEvent={handleSelectEvent}
-        culture="th"
-        messages={{
-            next: "ถัดไป",
-            previous: "ก่อนหน้า",
-            today: "วันนี้",
-            month: "เดือน",
-            week: "สัปดาห์",
-            day: "วัน",
-            agenda: "กำหนดการ",
-            date: "วันที่",
-            time: "เวลา",
-            event: "กิจกรรม",
-            noEventsInRange: "ไม่มีกิจกรรมในช่วงนี้"
-        }}
-        formats={{
-          monthHeaderFormat: (date: Date) => `${format(date, 'MMMM', { locale: th })} ${date.getFullYear() + 543}`,
-          dayHeaderFormat: (date: Date) => `${format(date, 'EEEEที่ d MMMM', { locale: th })} ${date.getFullYear() + 543}`,
-          dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) => 
-            `${format(start, 'd MMM', { locale: th })} - ${format(end, 'd MMM', { locale: th })} ${end.getFullYear() + 543}`,
-          agendaDateFormat: (date: Date) => `${format(date, 'd MMMM', { locale: th })} ${date.getFullYear() + 543}`,
-          timeGutterFormat: (date: Date) => format(date, 'HH:mm', { locale: th }),
-          eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) => `${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`,
-          agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) => `${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`
-        }}
-        dayPropGetter={(date) => {
-          const holidayName = getHolidayName(date);
-          if (holidayName) {
-            return { className: 'holiday-day' };
-          }
-          return {};
-        }}
-        eventPropGetter={() => ({
-          style: {
-            backgroundColor: 'var(--cal-event-bg)',
-            color: 'var(--cal-event-text)',
-            borderLeft: '3px solid var(--cal-event-border)',
-            borderRadius: '6px',
-            fontSize: '0.8rem',
-            fontWeight: 500,
-          }
-        })}
-        components={{
-          month: {
-            dateHeader: ({ date, label }: { date: Date; label: string }) => {
+
+      {error ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+          <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-4">
+            <AlertCircle size={32} />
+          </div>
+          <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>ไม่สามารถโหลดข้อมูลได้</h3>
+          <p className="max-w-xs mb-6" style={{ color: 'var(--text-secondary)' }}>{error}</p>
+          <button 
+            onClick={() => refresh()}
+            className="btn-primary px-6 py-2 text-sm"
+          >
+            ลองใหม่ซ้ำอีกครั้ง
+          </button>
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0">
+          <Calendar
+            localizer={localizer}
+            events={calendarEvents}
+            startAccessor="start"
+            endAccessor="end"
+            view={view}
+            onView={(newView) => setView(newView)}
+            onSelectEvent={handleSelectEvent}
+            onShowMore={(events, date) => {
+              setShowMoreEvents(events as FormattedEvent[]);
+              setShowMoreDate(date);
+            }}
+            culture="th"
+            messages={{
+                next: "ถัดไป",
+                previous: "ก่อนหน้า",
+                today: "วันนี้",
+                month: "เดือน",
+                week: "สัปดาห์",
+                day: "วัน",
+                agenda: "กำหนดการ",
+                date: "วันที่",
+                time: "เวลา",
+                event: "กิจกรรม",
+                noEventsInRange: "ไม่มีกิจกรรมในช่วงนี้"
+            }}
+            formats={{
+              monthHeaderFormat: (date: Date) => `${format(date, 'MMMM', { locale: th })} ${date.getFullYear() + 543}`,
+              dayHeaderFormat: (date: Date) => `${format(date, 'EEEEที่ d MMMM', { locale: th })} ${date.getFullYear() + 543}`,
+              dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) => 
+                `${format(start, 'd MMM', { locale: th })} - ${format(end, 'd MMM', { locale: th })} ${end.getFullYear() + 543}`,
+              agendaDateFormat: (date: Date) => `${format(date, 'd MMMM', { locale: th })} ${date.getFullYear() + 543}`,
+              timeGutterFormat: (date: Date) => format(date, 'HH:mm', { locale: th }),
+              eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) => `${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`,
+              agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) => `${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`
+            }}
+            dayPropGetter={(date) => {
               const holidayName = getHolidayName(date);
-              return (
-                <div>
-                  <span>{label}</span>
-                  {holidayName && (
-                    <div style={{
-                      fontSize: '0.6rem',
-                      color: 'var(--cal-holiday-text)',
-                      fontWeight: 600,
-                      lineHeight: 1.2,
-                      marginTop: '2px',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}>
-                      {holidayName}
+              if (holidayName) {
+                return { className: 'holiday-day' };
+              }
+              return {};
+            }}
+            eventPropGetter={() => ({
+              style: {
+                backgroundColor: 'var(--cal-event-bg)',
+                color: 'var(--cal-event-text)',
+                borderLeft: '3px solid var(--cal-event-border)',
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+              }
+            })}
+            components={{
+              toolbar: () => null,
+              month: {
+                dateHeader: ({ date, label }: { date: Date; label: string }) => {
+                  const holidayName = getHolidayName(date);
+                  return (
+                    <div>
+                      <span>{label}</span>
+                      {holidayName && (
+                        <div style={{
+                          fontSize: '0.6rem',
+                          color: 'var(--cal-holiday-text)',
+                          fontWeight: 600,
+                          lineHeight: 1.2,
+                          marginTop: '2px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}>
+                          {holidayName}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            }
-          }
-        }}
-        style={{ height: 'calc(100% - 60px)' }}
-      />
+                  );
+                }
+              }
+            }}
+            style={{ height: '100%' }}
+          />
+        </div>
+      )}
 
       {/* Event Modal */}
       {selectedEvent && (
@@ -255,8 +339,8 @@ const MyCalendar: React.FC = () => {
 
                   {selectedEvent.description && (
                     <div className="flex items-start gap-3 text-sm text-[var(--text-secondary)] pt-2 border-t border-[var(--border-primary)]">
-                      <AlignLeft size={18} className="mt-0.5 text-slate-400" />
-                      <div className="whitespace-pre-wrap">{selectedEvent.description}</div>
+                      <AlignLeft size={18} className="mt-0.5 text-slate-400 shrink-0" />
+                      {renderDescription(selectedEvent.description)}
                     </div>
                   )}
                 </div>
@@ -311,6 +395,56 @@ const MyCalendar: React.FC = () => {
                   <p className="text-xs text-[var(--text-tertiary)]">เข้าสู่ระบบเพื่อแก้ไขหรือลบการจอง</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* More Events Modal */}
+      {showMoreEvents && showMoreDate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-[var(--bg-secondary)] w-full max-w-md rounded-2xl shadow-2xl border border-[var(--border-primary)] overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="px-6 py-4 border-b border-[var(--border-primary)] flex justify-between items-center bg-[var(--bg-tertiary)] shrink-0">
+              <h3 className="font-bold text-[var(--text-primary)]">
+                การจองวันที่ {format(showMoreDate, 'd MMMM yyyy', { locale: th })}
+              </h3>
+              <button 
+                onClick={() => {
+                  setShowMoreEvents(null);
+                  setShowMoreDate(null);
+                }}
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-y-auto flex-1 space-y-3">
+              {showMoreEvents.map((event) => (
+                <div 
+                  key={event.id}
+                  onClick={() => {
+                    handleSelectEvent(event);
+                    setShowMoreEvents(null);
+                    setShowMoreDate(null);
+                  }}
+                  className="p-3 rounded-xl border border-[var(--border-primary)] hover:border-blue-500 cursor-pointer transition-all hover:shadow-md"
+                  style={{
+                    backgroundColor: 'var(--cal-event-bg)',
+                    borderLeft: '4px solid var(--cal-event-border)'
+                  }}
+                >
+                  <p className="text-xs font-semibold mb-1" style={{ color: 'var(--cal-event-text)' }}>
+                    {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')} น.
+                  </p>
+                  <p className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>{event.title}</p>
+                  {event.location && (
+                    <div className="flex items-center gap-1.5 mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                      <MapPin size={12} />
+                      <span className="truncate">{event.location}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>

@@ -8,5 +8,5 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  base: './', // For GitHub Pages
+  base: '/RIO7RoomBook/', // For GitHub Pages
 })
