@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+body {
+  margin: 0;
+  display: block;
+  min-width: 100vw;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+/* Big Calendar Customizations */
+.rbc-calendar {
+  font-family: inherit;
+}
+
+.rbc-header {
+  padding: 12px 0 !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.rbc-month-view {
+  border: 1px solid #f1f5f9 !important;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.rbc-day-bg {
+  border-left: 1px solid #f1f5f9 !important;
+}
+
+.rbc-month-row {
+  border-top: 1px solid #f1f5f9 !important;
+}
+
+.rbc-event {
+  border-radius: 6px !important;
+  padding: 4px 8px !important;
+  border: 1px solid transparent !important;
+}
+
+.rbc-off-range-bg {
+  background: #f8fafc !important;
+}
+
+.rbc-today {
+  background-color: #f0f7ff !important;
+}
+
+/* Holiday day styling */
+.holiday-day {
+  background-color: #fef2f2 !important;
+}
+
+.holiday-day .rbc-date-cell {
+  color: #dc2626;
+}
+
+.rbc-date-header {
+  text-align: right;
+  padding: 4px 8px;
+}
+
+.rbc-show-more {
+  font-size: 0.75rem;
+  color: #3b82f6;
+  font-weight: 600;
+}
