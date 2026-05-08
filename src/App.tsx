@@ -1,17 +1,38 @@
-import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import { ThemeProvider } from './context/ThemeContext';
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+// Pages
+import BookingCalendar from './pages/BookingCalendar';
+import BookRoom from './pages/BookRoom';
+import MeetingRooms from './pages/MeetingRooms';
+import AdminDashboard from './pages/AdminDashboard';
+import AllBookings from './pages/AllBookings';
+import ManageRooms from './pages/ManageRooms';
+import ExportExcel from './pages/ExportExcel';
+import Settings from './pages/Settings';
 
 function App() {
   return (
-    <GoogleOAuthProvider clientId={CLIENT_ID}>
+    <ThemeProvider>
       <GoogleAuthProvider>
-        <Layout />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<BookingCalendar />} />
+              <Route path="book" element={<BookRoom />} />
+              <Route path="rooms" element={<MeetingRooms />} />
+              <Route path="admin" element={<AdminDashboard />} />
+              <Route path="admin/bookings" element={<AllBookings />} />
+              <Route path="admin/rooms" element={<ManageRooms />} />
+              <Route path="admin/export" element={<ExportExcel />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
       </GoogleAuthProvider>
-    </GoogleOAuthProvider>
+    </ThemeProvider>
   );
 }
 

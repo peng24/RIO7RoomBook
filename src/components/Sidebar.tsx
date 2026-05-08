@@ -1,88 +1,106 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 import { 
   Calendar, 
   PlusSquare, 
-  UserCircle, 
   DoorOpen, 
   LayoutDashboard, 
   List, 
   Settings, 
-  Users, 
   FileSpreadsheet 
 } from 'lucide-react';
 
 const Sidebar: React.FC = () => {
   const mainMenu = [
-    { name: 'ปฏิทินการจอง', icon: <Calendar size={20} />, active: true },
-    { name: 'จองห้อง', icon: <PlusSquare size={20} /> },
-    { name: 'การจองของฉัน', icon: <UserCircle size={20} /> },
-    { name: 'ห้องประชุม', icon: <DoorOpen size={20} /> },
+    { name: 'ปฏิทินการจอง', icon: <Calendar size={20} />, path: '/' },
+    { name: 'จองห้อง', icon: <PlusSquare size={20} />, path: '/book' },
+    { name: 'ห้องประชุม', icon: <DoorOpen size={20} />, path: '/rooms' },
   ];
 
   const adminMenu = [
-    { name: 'ภาพรวม Admin', icon: <LayoutDashboard size={20} /> },
-    { name: 'การจองทั้งหมด', icon: <List size={20} /> },
-    { name: 'จัดการห้อง', icon: <DoorOpen size={20} /> },
-    { name: 'จัดการผู้ใช้', icon: <Users size={20} /> },
-    { name: 'ส่งออก Excel', icon: <FileSpreadsheet size={20} /> },
-    { name: 'ตั้งค่าระบบ', icon: <Settings size={20} /> },
+    { name: 'ภาพรวม Admin', icon: <LayoutDashboard size={20} />, path: '/admin' },
+    { name: 'การจองทั้งหมด', icon: <List size={20} />, path: '/admin/bookings' },
+    { name: 'จัดการห้อง', icon: <DoorOpen size={20} />, path: '/admin/rooms' },
+    { name: 'ส่งออก Excel', icon: <FileSpreadsheet size={20} />, path: '/admin/export' },
+    { name: 'ตั้งค่าระบบ', icon: <Settings size={20} />, path: '/settings' },
   ];
 
+  const navLinkClass = ({ isActive }: { isActive: boolean }) => 
+    `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+      isActive 
+        ? 'text-white font-medium shadow-lg' 
+        : 'text-slate-400 hover:text-white hover:bg-white/5'
+    }`;
+
+  const activeStyle = { 
+    background: 'var(--accent-gradient)', 
+    boxShadow: '0 4px 15px rgba(59, 130, 246, 0.3)' 
+  };
+
   return (
-    <div className="w-64 bg-slate-900 text-white h-screen flex flex-col shrink-0">
-      <div className="p-6">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <span className="text-blue-400">Room</span>Book
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">ระบบจองห้องประชุม</p>
+    <div className="w-64 h-screen flex flex-col shrink-0" style={{ background: 'var(--bg-sidebar)' }}>
+      {/* Logo */}
+      <div className="p-6 pb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: 'var(--accent-gradient)' }}>
+            RB
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-white tracking-tight">
+              Room<span style={{ color: '#60a5fa' }}>Book</span>
+            </h1>
+            <p className="text-[10px] text-slate-500 font-medium">ระบบจองห้องประชุม</p>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex-1 px-4 py-2 space-y-8 overflow-y-auto">
+      <nav className="flex-1 px-3 space-y-6 overflow-y-auto">
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-4 px-2">Main Menu</p>
+          <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold mb-3 px-3">เมนูหลัก</p>
           <ul className="space-y-1">
             {mainMenu.map((item) => (
               <li key={item.name}>
-                <a
-                  href="#"
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                    item.active ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                  }`}
+                <NavLink
+                  to={item.path}
+                  className={navLinkClass}
+                  style={({ isActive }) => isActive ? activeStyle : {}}
                 >
                   {item.icon}
                   <span className="text-sm">{item.name}</span>
-                </a>
+                </NavLink>
               </li>
             ))}
           </ul>
         </div>
 
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-4 px-2">Admin Menu</p>
+          <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold mb-3 px-3">ผู้ดูแลระบบ</p>
           <ul className="space-y-1">
             {adminMenu.map((item) => (
               <li key={item.name}>
-                <a
-                  href="#"
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                <NavLink
+                  to={item.path}
+                  className={navLinkClass}
+                  style={({ isActive }) => isActive ? activeStyle : {}}
                 >
                   {item.icon}
                   <span className="text-sm">{item.name}</span>
-                </a>
+                </NavLink>
               </li>
             ))}
           </ul>
         </div>
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
+      {/* Footer */}
+      <div className="p-4 border-t border-white/5">
         <div className="flex items-center gap-3 px-2 py-2">
-          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ background: 'var(--accent-gradient)' }}>
             RB
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium truncate">Room Book</p>
-            <p className="text-xs text-slate-500 truncate">ระบบจองห้องประชุม</p>
+            <p className="text-sm font-medium text-white truncate">Room Book</p>
+            <p className="text-[10px] text-slate-500 truncate">v1.0.0</p>
           </div>
         </div>
       </div>
