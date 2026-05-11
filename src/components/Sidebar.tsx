@@ -43,7 +43,7 @@ const Sidebar: React.FC = () => {
       <div className="p-5 pb-6">
         <div className="flex items-center gap-3">
           <img
-            src="/logo.png"
+            src={`${import.meta.env.BASE_URL}logo.png`}
             alt="RIO7"
             className="w-10 h-10 object-contain"
           />
@@ -97,7 +97,7 @@ const Sidebar: React.FC = () => {
       {/* Footer */}
       <div className="p-4 border-t border-white/5">
         <div className="flex items-center gap-3 px-2 py-2">
-          <img src="/logo.png" alt="RIO7" className="w-8 h-8 object-contain" />
+          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="RIO7" className="w-8 h-8 object-contain" />
           <div className="flex-1 overflow-hidden">
             <p className="text-sm font-medium text-white truncate">RIO7</p>
             <p className="text-[10px] text-slate-500 truncate">v1.0.0</p>
