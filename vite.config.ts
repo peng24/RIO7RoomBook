@@ -3,10 +3,10 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     react(),
     tailwindcss(),
   ],
-  base: '/RIO7RoomBook/', // For GitHub Pages
-})
+  base: command === 'build' ? '/RIO7RoomBook/' : '/', // Use /RIO7RoomBook/ for GitHub Pages, / for local dev
+}))

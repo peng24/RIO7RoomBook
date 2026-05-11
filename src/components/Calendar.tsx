@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay, isSameDay } from 'date-fns';
+import { format, parse, startOfWeek, getDay, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { th } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useCalendarEvents, type FormattedEvent } from '../hooks/useCalendarEvents';
 import { useAuth } from '../context/GoogleAuthContext';
 import { updateEvent, deleteEvent } from '../services/googleCalendar';
-import { X, Clock, MapPin, AlignLeft, Edit2, Trash2, Save, Loader2, Paperclip, AlertCircle } from 'lucide-react';
+import { X, Clock, MapPin, AlignLeft, Edit2, Trash2, Save, Loader2, Paperclip, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const locales = {
@@ -23,6 +23,7 @@ const localizer = dateFnsLocalizer({
 
 const MyCalendar: React.FC = () => {
   const [view, setView] = useState<any>(Views.MONTH);
+  const [date, setDate] = useState(new Date());
   const { events, refresh, loading: eventsLoading, error } = useCalendarEvents();
   const { isAuthenticated, accessToken, canEdit } = useAuth();
   const [selectedEvent, setSelectedEvent] = useState<FormattedEvent | null>(null);
@@ -117,6 +118,25 @@ const MyCalendar: React.FC = () => {
     }
   };
 
+  const handlePrev = () => {
+    if (view === 'month' || view === 'agenda') setDate(d => subMonths(d, 1));
+    else if (view === 'week') setDate(d => subWeeks(d, 1));
+    else if (view === 'day') setDate(d => subDays(d, 1));
+  };
+
+  const handleNext = () => {
+    if (view === 'month' || view === 'agenda') setDate(d => addMonths(d, 1));
+    else if (view === 'week') setDate(d => addWeeks(d, 1));
+    else if (view === 'day') setDate(d => addDays(d, 1));
+  };
+
+  const getLabel = () => {
+    if (view === 'day') {
+      return `${format(date, 'd MMMM', { locale: th })} พ.ศ. ${date.getFullYear() + 543}`;
+    }
+    return `${format(date, 'MMMM', { locale: th })} พ.ศ. ${date.getFullYear() + 543}`;
+  };
+
   const renderDescription = (text: string) => {
     if (!text) return null;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -148,21 +168,35 @@ const MyCalendar: React.FC = () => {
 
   return (
     <div className="glass-card p-6 h-full relative flex flex-col" style={{ minHeight: '700px' }}>
-      <div className="flex justify-between items-center mb-6 shrink-0">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>ปฏิทินการจอง</h2>
-          {eventsLoading && <Loader2 size={18} className="animate-spin text-blue-500" />}
+      <div className="flex flex-col lg:flex-row justify-between items-center mb-6 shrink-0 gap-4">
+        <div className="flex items-center justify-between w-full lg:w-auto gap-4">
+          <h2 className="text-lg font-bold shrink-0 hidden md:block" style={{ color: 'var(--text-primary)' }}>ปฏิทินการจอง</h2>
+          
+          <div className="flex flex-1 items-center gap-4">
+            <div className="flex items-center bg-[var(--bg-tertiary)] rounded-xl p-1 border border-[var(--border-primary)] shadow-sm">
+              <button onClick={handlePrev} className="p-1.5 hover:bg-[var(--bg-secondary)] rounded-lg text-[var(--text-secondary)] transition-colors"><ChevronLeft size={18} /></button>
+              <button onClick={() => setDate(new Date())} className="px-3 py-1 text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] rounded-lg transition-colors">วันนี้</button>
+              <button onClick={handleNext} className="p-1.5 hover:bg-[var(--bg-secondary)] rounded-lg text-[var(--text-secondary)] transition-colors"><ChevronRight size={18} /></button>
+            </div>
+            
+            <div className="text-base md:text-lg font-bold" style={{ color: 'var(--accent-primary)', minWidth: '150px' }}>
+              {getLabel()}
+            </div>
+          </div>
+
+          {eventsLoading && <Loader2 size={18} className="animate-spin text-blue-500 shrink-0" />}
         </div>
-        <div className="flex gap-2">
+
+        <div className="flex gap-2 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0" style={{ scrollbarWidth: 'none' }}>
           {['Day', 'Week', 'Month', 'Agenda'].map((v) => (
             <button
               key={v}
               onClick={() => setView(v.toLowerCase())}
-              className="px-4 py-2 text-sm rounded-xl font-medium transition-all duration-200"
+              className="px-4 py-2 text-sm rounded-xl font-medium transition-all duration-200 shrink-0 border"
               style={
                 view === v.toLowerCase() 
-                  ? { background: 'var(--accent-gradient)', color: 'white', boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)' } 
-                  : { background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }
+                  ? { background: 'var(--accent-gradient)', color: 'white', borderColor: 'transparent', boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)' } 
+                  : { background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }
               }
             >
               {v === 'Day' ? 'วัน' : v === 'Week' ? 'สัปดาห์' : v === 'Month' ? 'เดือน' : v === 'Agenda' ? 'กำหนดการ' : v}
@@ -194,6 +228,8 @@ const MyCalendar: React.FC = () => {
             endAccessor="end"
             view={view}
             onView={(newView) => setView(newView)}
+            date={date}
+            onNavigate={(newDate) => setDate(newDate)}
             onSelectEvent={handleSelectEvent}
             onShowMore={(events, date) => {
               setShowMoreEvents(events as FormattedEvent[]);

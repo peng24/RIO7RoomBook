@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronRight, Paperclip, Loader2, CalendarOff } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -10,9 +10,7 @@ import { db } from '../services/firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import Swal from 'sweetalert2';
 
-const MONTHS_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-// ลำดับห้องที่ต้องการ
-const ROOM_ORDER = ['ห้องประชุม SWOC7', 'ห้องประชุมเล็ก', 'ห้องประชุมรวงผึ้ง (ห้องออกแบบ)'];
+
 
 interface QuickBookProps {
   isPage?: boolean;
@@ -23,6 +21,7 @@ interface Room {
   name: string;
   colorId: string;
   status: string;
+  order?: number;
 }
 
 const QuickBook: React.FC<QuickBookProps> = ({ isPage = false }) => {
@@ -31,31 +30,28 @@ const QuickBook: React.FC<QuickBookProps> = ({ isPage = false }) => {
   const [loading, setLoading] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
 
-  const now = new Date();
+  const formatDateTimeLocal = (date: Date) => {
+    const pad = (num: number) => String(num).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+  
+  const defaultStart = new Date();
+  defaultStart.setHours(defaultStart.getHours() + 1, 0, 0, 0);
+  const defaultEnd = new Date(defaultStart);
+  defaultEnd.setHours(defaultStart.getHours() + 1);
+
   const [formData, setFormData] = useState({
     room: '',
-    day: now.getDate(),
-    month: now.getMonth(),   // 0-indexed
-    year: now.getFullYear(),
-    startHour: '09',
-    startMin: '00',
-    endHour: '10',
-    endMin: '00',
     title: '',
+    startDateTime: formatDateTimeLocal(defaultStart),
+    endDateTime: formatDateTimeLocal(defaultEnd)
   });
   const [file, setFile] = useState<File | null>(null);
   
   const [meetingFormat, setMeetingFormat] = useState('ประชุม');
   const [otherMeetingFormat, setOtherMeetingFormat] = useState('');
 
-  const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 1 + i);
-  const daysInMonth = useMemo(() => {
-    return new Date(formData.year, formData.month + 1, 0).getDate();
-  }, [formData.year, formData.month]);
-  const hours = Array.from({ length: 13 }, (_, i) => String(i + 7).padStart(2, '0'));  // 07-19
-  const minutes = ['00', '15', '30', '45'];
-
-  // Fetch active rooms from Firestore, sorted by preferred order
+  // Fetch active rooms from Firestore, sorted by order field
   useEffect(() => {
     const q = query(collection(db, 'rooms'), where('status', '==', 'Active'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -63,12 +59,8 @@ const QuickBook: React.FC<QuickBookProps> = ({ isPage = false }) => {
         id: doc.id,
         ...doc.data()
       })) as Room[];
-      // เรียงตามลำดับที่กำหนด
-      const sorted = [...roomList].sort((a, b) => {
-        const ai = ROOM_ORDER.findIndex(r => a.name.includes(r.split(' ')[1]));
-        const bi = ROOM_ORDER.findIndex(r => b.name.includes(r.split(' ')[1]));
-        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-      });
+      // เรียงตาม order ที่ได้จาก Firestore (ถ้าไม่มีให้เป็น 99)
+      const sorted = [...roomList].sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
       setRooms(sorted);
       if (sorted.length > 0 && !formData.room) {
         setFormData(prev => ({ ...prev, room: sorted[0].name }));
@@ -118,9 +110,8 @@ const QuickBook: React.FC<QuickBookProps> = ({ isPage = false }) => {
         }
       }
 
-      const dateStr = `${formData.year}-${String(formData.month + 1).padStart(2,'0')}-${String(formData.day).padStart(2,'0')}`;
-      const startDateTime = new Date(`${dateStr}T${formData.startHour}:${formData.startMin}:00`).toISOString();
-      const endDateTime   = new Date(`${dateStr}T${formData.endHour}:${formData.endMin}:00`).toISOString();
+      const startDateTime = new Date(formData.startDateTime).toISOString();
+      const endDateTime = new Date(formData.endDateTime).toISOString();
 
       const selectedRoom = rooms.find(r => r.name === formData.room);
 
@@ -242,47 +233,26 @@ const QuickBook: React.FC<QuickBookProps> = ({ isPage = false }) => {
             </select>
           </div>
 
-          {/* Thai Date Picker */}
-          <div>
-            <label style={labelStyle}>วันที่</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1.5fr', gap: '6px', marginTop: '4px' }}>
-              <select style={inputStyle} value={formData.day} onChange={e => setFormData({...formData, day: Number(e.target.value)})}>
-                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-              <select style={inputStyle} value={formData.month} onChange={e => setFormData({...formData, month: Number(e.target.value), day: 1})}>
-                {MONTHS_TH.map((m, i) => <option key={i} value={i}>{m}</option>)}
-              </select>
-              <select style={inputStyle} value={formData.year} onChange={e => setFormData({...formData, year: Number(e.target.value)})}>
-                {years.map(y => <option key={y} value={y}>{y + 543}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Thai Time Pickers */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={labelStyle}>เวลาเริ่ม</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginTop: '4px' }}>
-                <select style={inputStyle} value={formData.startHour} onChange={e => setFormData({...formData, startHour: e.target.value})}>
-                  {hours.map(h => <option key={h} value={h}>{h} น.</option>)}
-                </select>
-                <select style={inputStyle} value={formData.startMin} onChange={e => setFormData({...formData, startMin: e.target.value})}>
-                  {minutes.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
+              <label style={labelStyle}>วันและเวลาเริ่ม</label>
+              <input 
+                type="datetime-local" 
+                style={{...inputStyle, marginTop: '4px'}} 
+                value={formData.startDateTime}
+                onChange={e => setFormData({...formData, startDateTime: e.target.value})}
+                required
+              />
             </div>
             <div>
-              <label style={labelStyle}>เวลาสิ้นสุด</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginTop: '4px' }}>
-                <select style={inputStyle} value={formData.endHour} onChange={e => setFormData({...formData, endHour: e.target.value})}>
-                  {hours.map(h => <option key={h} value={h}>{h} น.</option>)}
-                </select>
-                <select style={inputStyle} value={formData.endMin} onChange={e => setFormData({...formData, endMin: e.target.value})}>
-                  {minutes.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
+              <label style={labelStyle}>วันและเวลาสิ้นสุด</label>
+              <input 
+                type="datetime-local" 
+                style={{...inputStyle, marginTop: '4px'}} 
+                value={formData.endDateTime}
+                onChange={e => setFormData({...formData, endDateTime: e.target.value})}
+                required
+              />
             </div>
           </div>
           <div>
