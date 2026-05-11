@@ -82,7 +82,7 @@ export const createEvent = async (accessToken: string, event: Partial<GoogleCale
 };
 
 export const updateEvent = async (accessToken: string, eventId: string, event: Partial<GoogleCalendarEvent>) => {
-  const response = await axios.put(
+  const response = await axios.patch(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${eventId}`,
     event,
     {

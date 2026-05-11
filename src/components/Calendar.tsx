@@ -6,6 +6,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useCalendarEvents, type FormattedEvent } from '../hooks/useCalendarEvents';
 import { useAuth } from '../context/GoogleAuthContext';
 import { updateEvent, deleteEvent } from '../services/googleCalendar';
+import { uploadFile, getFileLink } from '../services/googleDrive';
 import { X, Clock, MapPin, AlignLeft, Edit2, Trash2, Save, Loader2, Paperclip, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -36,6 +37,7 @@ const MyCalendar: React.FC = () => {
     description: '',
     location: '',
   });
+  const [editFile, setEditFile] = useState<File | null>(null);
 
   // Filter out holidays from events (shown as day backgrounds instead)
   const calendarEvents = useMemo(() => events.filter(e => e.resource !== 'holiday'), [events]);
@@ -53,6 +55,7 @@ const MyCalendar: React.FC = () => {
       description: event.description || '',
       location: event.location || '',
     });
+    setEditFile(null);
     setIsEditing(false);
   };
 
@@ -61,20 +64,44 @@ const MyCalendar: React.FC = () => {
     setLoading(true);
     Swal.fire({
       title: 'กำลังบันทึก...',
+      html: editFile ? 'กำลังอัปโหลดไฟล์และบันทึกการแก้ไข' : 'กำลังบันทึกข้อมูล',
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading()
     });
     try {
+      let finalDescription = editData.description;
+      if (editFile) {
+        try {
+          const uploadResult = await uploadFile(accessToken, editFile);
+          const fileUrl = await getFileLink(accessToken, uploadResult.id);
+          finalDescription = finalDescription ? `${finalDescription}\n\nไฟล์แนบใหม่: ${fileUrl}` : `ไฟล์แนบ: ${fileUrl}`;
+        } catch (uploadError: any) {
+          console.error('File upload failed:', uploadError);
+          const result = await Swal.fire({
+            icon: 'warning',
+            title: 'อัปโหลดไฟล์ไม่สำเร็จ',
+            text: 'ไม่สามารถอัปโหลดไฟล์แนบได้ คุณต้องการบันทึกข้อมูลอื่นๆ ต่อไปหรือไม่?',
+            showCancelButton: true,
+            confirmButtonText: 'บันทึกต่อไป',
+            cancelButtonText: 'ยกเลิก'
+          });
+          
+          if (!result.isConfirmed) {
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       await updateEvent(accessToken, selectedEvent.id, {
         summary: editData.title,
-        description: editData.description,
+        description: finalDescription,
         location: editData.location,
-        start: { dateTime: selectedEvent.start.toISOString() },
-        end: { dateTime: selectedEvent.end.toISOString() },
       });
       refresh();
       setSelectedEvent(null);
       setIsEditing(false);
+      setEditFile(null);
       Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', showConfirmButton: false, timer: 1500 });
     } catch (error) {
       console.error('Error updating event:', error);
@@ -398,12 +425,21 @@ const MyCalendar: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-tertiary)] block mb-1">รายละเอียด</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-tertiary)] block mb-1">รายละเอียดและไฟล์แนบเดิม</label>
                     <textarea 
                       className="w-full bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-xl px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/20 h-24 resize-none"
                       value={editData.description}
                       onChange={(e) => setEditData({...editData, description: e.target.value})}
                     />
+                    <p className="text-xs text-[var(--text-tertiary)] mt-1">* หากต้องการลบไฟล์แนบเดิม ให้ลบลิงก์ที่อยู่ในกล่องข้อความนี้</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-tertiary)] block mb-1">เพิ่มไฟล์แนบใหม่</label>
+                    <label className="flex items-center justify-center gap-2 cursor-pointer transition-all duration-200" style={{ marginTop: '4px', padding: '14px 12px', border: '2px dashed var(--border-primary)', borderRadius: '10px', background: 'var(--bg-input)' }}>
+                      <Paperclip size={16} style={{ color: 'var(--text-tertiary)' }} />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{editFile ? editFile.name : 'เลือกไฟล์เพื่ออัปโหลดเพิ่ม'}</span>
+                      <input type="file" className="hidden" onChange={(e) => setEditFile(e.target.files?.[0] || null)} />
+                    </label>
                   </div>
                 </div>
               ) : (
@@ -450,7 +486,10 @@ const MyCalendar: React.FC = () => {
                     {isEditing ? (
                       <>
                         <button 
-                          onClick={() => setIsEditing(false)}
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditFile(null);
+                          }}
                           disabled={loading}
                           className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors"
                         >

@@ -4,72 +4,68 @@ const PARENT_FOLDER_ID = import.meta.env.VITE_DRIVE_PARENT_FOLDER_ID;
 
 export const getOrCreateSubfolder = async (accessToken: string) => {
   const now = new Date();
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+  const thaiMonths = [
+    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
   ];
-  const folderName = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+  const thaiYear = now.getFullYear() + 543;
+  const yearFolderName = `${thaiYear}`;
+  const monthFolderName = `${thaiMonths[now.getMonth()]} ${thaiYear}`;
 
   try {
-    // 1. Search for folder
-    let query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-    let searchUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}`;
-    
-    if (PARENT_FOLDER_ID) {
-      const parentQuery = `${query} and '${PARENT_FOLDER_ID}' in parents`;
-      const parentSearchUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(parentQuery)}`;
-      
-      try {
-        const searchResponse = await axios.get(parentSearchUrl, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        if (searchResponse.data.files && searchResponse.data.files.length > 0) {
-          return searchResponse.data.files[0].id;
-        }
-      } catch (parentErr) {
-        console.warn("Cannot search in PARENT_FOLDER_ID, likely no access. Falling back to general search.", parentErr);
+    // Helper to find or create a folder
+    const findOrCreate = async (name: string, parentId: string | null) => {
+      let query = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+      if (parentId) {
+        query += ` and '${parentId}' in parents`;
       }
-    }
+      const searchUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}`;
+      
+      const searchResponse = await axios.get(searchUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
 
-    const searchResponse = await axios.get(searchUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
+      if (searchResponse.data.files && searchResponse.data.files.length > 0) {
+        return searchResponse.data.files[0].id;
+      }
 
-    if (searchResponse.data.files && searchResponse.data.files.length > 0) {
-      return searchResponse.data.files[0].id;
-    }
+      const metadata: any = {
+        name: name,
+        mimeType: 'application/vnd.google-apps.folder',
+      };
+      if (parentId) {
+        metadata.parents = [parentId];
+      }
 
-    // 2. Create folder if not found
-    const metadata: any = {
-      name: folderName,
-      mimeType: 'application/vnd.google-apps.folder',
-    };
-    
-    // Only add parent if we think we have access (or if we want to try anyway)
-    if (PARENT_FOLDER_ID) {
-      metadata.parents = [PARENT_FOLDER_ID];
-    }
-
-    try {
       const createResponse = await axios.post(
         'https://www.googleapis.com/drive/v3/files',
         metadata,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       return createResponse.data.id;
-    } catch (createErr: any) {
-      if (PARENT_FOLDER_ID && createErr.response?.status === 403) {
-        console.warn("Could not create folder inside PARENT_FOLDER_ID. Trying to create in root.");
-        delete metadata.parents;
-        const rootCreateResponse = await axios.post(
-          'https://www.googleapis.com/drive/v3/files',
-          metadata,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        return rootCreateResponse.data.id;
+    };
+
+    // 1. Find or create Year folder
+    let yearFolderId = null;
+    try {
+      yearFolderId = await findOrCreate(yearFolderName, PARENT_FOLDER_ID || null);
+    } catch (yearErr: any) {
+      if (PARENT_FOLDER_ID && yearErr.response?.status === 403) {
+        console.warn("Could not create year folder inside PARENT_FOLDER_ID. Trying root.");
+        yearFolderId = await findOrCreate(yearFolderName, null);
+      } else {
+        throw yearErr;
       }
-      throw createErr;
     }
+
+    // 2. Find or create Month folder inside Year folder
+    if (yearFolderId) {
+      const monthFolderId = await findOrCreate(monthFolderName, yearFolderId);
+      return monthFolderId;
+    }
+    
+    // Fallback if yearFolderId is somehow null
+    return await findOrCreate(monthFolderName, null);
   } catch (error) {
     console.warn("Could not access or create subfolder. Falling back to root directory.", error);
     return null;
