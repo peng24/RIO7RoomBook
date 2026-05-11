@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import DashboardStats from '../components/DashboardStats';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { Calendar, Clock, MapPin, TrendingUp, BarChart2, Users, Award } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, differenceInMinutes, getHours, isWeekend } from 'date-fns';
 import { th } from 'date-fns/locale';
 
@@ -146,6 +147,19 @@ const AdminDashboard: React.FC = () => {
     },
   ];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, scale: 0.9 },
+    show: { opacity: 1, scale: 1, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
+  };
+
   return (
     <div className="py-8">
       {/* Header */}
@@ -156,17 +170,17 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Period Selector */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 glass-card p-1">
           {/* Month / Year toggle */}
-          <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border-primary)' }}>
+          <div className="flex rounded-lg overflow-hidden">
             {(['month', 'year'] as const).map(p => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className="px-4 py-2 text-sm font-medium transition-all duration-200"
+                className="px-4 py-2 text-sm font-medium transition-all duration-300"
                 style={period === p
-                  ? { background: 'var(--accent-gradient)', color: 'white' }
-                  : { background: 'var(--bg-card)', color: 'var(--text-secondary)' }}
+                  ? { background: 'var(--accent-gradient)', color: 'white', boxShadow: '0 2px 10px rgba(59,130,246,0.3)' }
+                  : { background: 'transparent', color: 'var(--text-secondary)' }}
               >
                 {p === 'month' ? 'รายเดือน' : 'รายปี'}
               </button>
@@ -178,11 +192,11 @@ const AdminDashboard: React.FC = () => {
             <select
               value={selectedMonth}
               onChange={e => setSelectedMonth(Number(e.target.value))}
-              className="px-3 py-2 text-sm rounded-xl"
-              style={{ background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
+              className="px-3 py-2 text-sm rounded-lg bg-transparent focus:ring-2 outline-none transition-all"
+              style={{ color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
             >
               {MONTHS_TH.map((m, i) => (
-                <option key={i} value={i}>{m}</option>
+                <option key={i} value={i} className="bg-[var(--bg-card)]">{m}</option>
               ))}
             </select>
           )}
@@ -191,11 +205,11 @@ const AdminDashboard: React.FC = () => {
           <select
             value={selectedYear}
             onChange={e => setSelectedYear(Number(e.target.value))}
-            className="px-3 py-2 text-sm rounded-xl"
-            style={{ background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
+            className="px-3 py-2 text-sm rounded-lg bg-transparent focus:ring-2 outline-none transition-all"
+            style={{ color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
           >
             {years.map(y => (
-              <option key={y} value={y}>{y + 543}</option>
+              <option key={y} value={y} className="bg-[var(--bg-card)]">{y + 543}</option>
             ))}
           </select>
         </div>
@@ -204,36 +218,48 @@ const AdminDashboard: React.FC = () => {
       <DashboardStats rooms={ROOMS} />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8"
+      >
         {summaryCards.map(card => (
-          <div
+          <motion.div
+            variants={itemVariants}
             key={card.label}
-            className="rounded-2xl p-4"
-            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)' }}
+            className="glass-card p-4 hover:-translate-y-1 transition-transform duration-300"
           >
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: card.bg, color: card.color }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300 hover:rotate-12 hover:scale-110" style={{ background: card.bg, color: card.color }}>
               {card.icon}
             </div>
             <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>{card.label}</p>
             <p className="text-xl font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{card.value}</p>
             {card.unit && <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{card.unit}</p>}
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Upcoming Bookings */}
-        <div className="bg-[var(--bg-secondary)] rounded-2xl p-6 border border-[var(--border-primary)]">
+        <div className="glass-card p-6">
           <h3 className="text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>การจองที่กำลังมาถึง</h3>
           <div className="space-y-3">
             {upcomingEvents.length > 0 ? (
               upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-center gap-4 p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-primary)]">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3 }}
+                  key={event.id} 
+                  className="group flex items-center gap-4 p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-primary)] hover:border-blue-400/50 transition-colors cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
                     <Calendar size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate text-sm" style={{ color: 'var(--text-primary)' }}>{event.title}</p>
+                    <p className="font-semibold truncate text-sm transition-colors group-hover:text-blue-500" style={{ color: 'var(--text-primary)' }}>{event.title}</p>
                     <div className="flex items-center gap-3 text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
                       <span className="flex items-center gap-1">
                         <Clock size={11} />
@@ -244,7 +270,7 @@ const AdminDashboard: React.FC = () => {
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))
             ) : (
               <div className="text-center py-10" style={{ color: 'var(--text-tertiary)' }}>
@@ -256,7 +282,7 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Room Usage */}
-        <div className="bg-[var(--bg-secondary)] rounded-2xl p-6 border border-[var(--border-primary)]">
+        <div className="glass-card p-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>อัตราการใช้งานห้อง</h3>
             <span className="text-xs px-3 py-1 rounded-full font-medium" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)' }}>

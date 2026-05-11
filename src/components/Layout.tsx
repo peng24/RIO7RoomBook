@@ -4,6 +4,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/GoogleAuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { LogIn, Sun, Moon, LogOut } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
+import PageTransition from './PageTransition';
 
 const Layout: React.FC = () => {
   const { login, logout, isAuthenticated } = useAuth();
@@ -30,11 +32,7 @@ const Layout: React.FC = () => {
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header 
-          className="h-16 flex items-center justify-between px-8 shrink-0 backdrop-blur-xl z-10"
-          style={{ 
-            background: 'var(--bg-header)',
-            borderBottom: '1px solid var(--border-primary)',
-          }}
+          className={`h-16 flex items-center justify-between px-8 shrink-0 backdrop-blur-xl z-10 border-b ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}
         >
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Dashboard</h2>
@@ -46,7 +44,7 @@ const Layout: React.FC = () => {
             {/* Theme Toggle */}
             <button 
               onClick={toggleTheme}
-              className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-105"
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-12 hover:shadow-md"
               style={{ 
                 background: 'var(--bg-tertiary)',
                 color: 'var(--text-secondary)',
@@ -60,29 +58,36 @@ const Layout: React.FC = () => {
             {isAuthenticated ? (
               <button 
                 onClick={logout}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-[1.02]"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-[1.05] hover:shadow-md"
                 style={{ 
                   background: 'var(--bg-tertiary)',
                   color: 'var(--text-secondary)',
                 }}
               >
-                <LogOut size={16} />
+                <LogOut size={16} className="transition-transform group-hover:-translate-x-1" />
                 ออกจากระบบ
               </button>
             ) : (
               <button 
                 onClick={() => login()}
-                className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm"
+                className="btn-primary group flex items-center gap-2 px-5 py-2.5 text-sm"
               >
-                <LogIn size={16} />
+                <LogIn size={16} className="transition-transform group-hover:translate-x-1" />
                 เข้าสู่ระบบด้วย Google
               </button>
             )}
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8">
-          <Outlet />
+        <div className="flex-1 overflow-y-auto p-8 relative">
+          {/* Animated Background Mesh Gradient (Subtle) */}
+          <div className="absolute inset-0 pointer-events-none opacity-20 dark:opacity-10 mix-blend-multiply dark:mix-blend-screen bg-gradient-to-br from-blue-400 via-indigo-400 to-purple-400 animate-gradient" style={{ filter: 'blur(80px)' }}></div>
+          
+          <AnimatePresence mode="wait">
+            <PageTransition key={location.pathname}>
+              <Outlet />
+            </PageTransition>
+          </AnimatePresence>
         </div>
       </main>
     </div>

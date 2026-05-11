@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { DoorOpen, Users, Monitor, Wifi, Coffee, Loader2, AlertCircle } from 'lucide-react';
+import { DoorOpen, Users, Monitor, Wifi, Coffee, AlertCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import Skeleton from '../components/Skeleton';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 
@@ -38,6 +40,19 @@ const MeetingRooms: React.FC = () => {
     return colors[colorId] || '#3b82f6';
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
+  };
+
   return (
     <div className="py-8">
       <div className="mb-8">
@@ -46,20 +61,39 @@ const MeetingRooms: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 size={40} className="animate-spin text-blue-500 mb-4" />
-          <p style={{ color: 'var(--text-secondary)' }}>กำลังโหลดข้อมูลห้องประชุม...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="glass-card p-6 h-[250px] flex flex-col gap-4">
+               <div className="flex justify-between items-start">
+                 <Skeleton className="w-12 h-12 rounded-xl" />
+                 <Skeleton className="w-20 h-6 rounded-full" />
+               </div>
+               <Skeleton className="w-3/4 h-8" />
+               <Skeleton className="w-1/2 h-5" />
+               <div className="mt-auto border-t border-[var(--border-primary)] pt-4 flex gap-2">
+                 <Skeleton className="w-20 h-8 rounded-lg" />
+                 <Skeleton className="w-16 h-8 rounded-lg" />
+               </div>
+            </div>
+          ))}
         </div>
       ) : rooms.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+        >
           {rooms.map((room) => (
-            <div 
+            <motion.div 
+              variants={itemVariants}
               key={room.id}
-              className="bg-[var(--bg-secondary)] rounded-2xl p-6 border border-[var(--border-primary)] shadow-sm hover:shadow-md transition-shadow"
+              className="glass-card group p-6 relative overflow-hidden"
             >
-              <div className="flex justify-between items-start mb-4">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="flex justify-between items-start mb-4 relative z-10">
                 <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
                   style={{ backgroundColor: `${getRoomColorHex(room.colorId)}15`, color: getRoomColorHex(room.colorId) }}
                 >
                   <DoorOpen size={24} />
@@ -69,41 +103,45 @@ const MeetingRooms: React.FC = () => {
                 </span>
               </div>
               
-              <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{room.name}</h3>
+              <h3 className="text-lg font-bold mb-2 relative z-10" style={{ color: 'var(--text-primary)' }}>{room.name}</h3>
               
-              <div className="flex items-center gap-2 mb-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <div className="flex items-center gap-2 mb-4 text-sm relative z-10" style={{ color: 'var(--text-secondary)' }}>
                 <Users size={16} />
                 <span>รองรับ {room.capacity} ท่าน</span>
               </div>
 
-              <div className="border-t border-[var(--border-primary)] pt-4 mt-4">
+              <div className="border-t border-[var(--border-primary)] pt-4 mt-4 relative z-10">
                 <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-tertiary)' }}>สิ่งอำนวยความสะดวก</p>
                 <div className="flex flex-wrap gap-2">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs transition-colors hover:bg-[var(--bg-hover)]">
                     <Monitor size={14} />
                     <span>จอภาพ/TV</span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs transition-colors hover:bg-[var(--bg-hover)]">
                     <Wifi size={14} />
                     <span>Wi-Fi</span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs transition-colors hover:bg-[var(--bg-hover)]">
                     <Coffee size={14} />
                     <span>น้ำดื่ม/กาแฟ</span>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       ) : (
-        <div className="text-center py-20 bg-[var(--bg-secondary)] rounded-2xl border border-dashed border-[var(--border-primary)]">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center py-20 glass-card border-dashed"
+        >
           <div className="w-16 h-16 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center mx-auto mb-4 text-[var(--text-tertiary)]">
             <AlertCircle size={32} />
           </div>
           <h3 className="text-lg font-bold mb-1" style={{ color: 'var(--text-primary)' }}>ไม่พบข้อมูลห้องประชุม</h3>
           <p style={{ color: 'var(--text-secondary)' }}>กรุณาเพิ่มข้อมูลห้องประชุมในหน้าจัดการระบบ</p>
-        </div>
+        </motion.div>
       )}
     </div>
   );

@@ -283,9 +283,26 @@ const MyCalendar: React.FC = () => {
               month: {
                 dateHeader: ({ date, label }: { date: Date; label: string }) => {
                   const holidayName = getHolidayName(date);
+                  const isToday = isSameDay(date, new Date());
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', padding: '3px 0' }}>
-                      <span style={{ fontWeight: holidayName ? 700 : undefined }}>{label}</span>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: isToday ? '28px' : 'auto',
+                        height: isToday ? '28px' : 'auto',
+                        borderRadius: isToday ? '50%' : '0',
+                        backgroundColor: isToday ? 'var(--accent-primary)' : 'transparent',
+                        color: isToday ? '#ffffff' : 'inherit',
+                        fontWeight: isToday || holidayName ? 800 : 500,
+                        fontSize: isToday ? '0.85rem' : 'inherit',
+                        boxShadow: isToday ? '0 4px 10px rgba(59, 130, 246, 0.4)' : 'none',
+                        marginTop: '2px',
+                        transition: 'all 0.2s ease'
+                      }}>
+                        {label}
+                      </div>
                       {holidayName && (
                         <div style={{
                           fontSize: '0.72rem',
