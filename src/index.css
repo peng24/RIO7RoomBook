@@ -55,7 +55,7 @@
   --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
 
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Sarabun', system-ui, -apple-system, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
@@ -142,7 +142,7 @@ body {
 
 /* ========== Big Calendar Customizations ========== */
 .rbc-calendar {
-  font-family: inherit;
+  font-family: 'Sarabun', system-ui, -apple-system, sans-serif;
 }
 
 .rbc-header {
@@ -192,12 +192,18 @@ body {
 /* Holiday day styling */
 .holiday-day {
   background-color: var(--cal-holiday) !important;
+  border-top: 2px solid var(--cal-holiday-text) !important;
 }
 
 .rbc-date-header {
-  text-align: right;
-  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 4px 2px;
   color: var(--text-secondary);
+  text-align: center;
+  width: 100%;
 }
 
 .rbc-off-range .rbc-date-header {
@@ -261,18 +267,75 @@ body {
   color: var(--text-tertiary);
 }
 
+/* ========== Agenda View (Google Calendar Style) ========== */
+.rbc-agenda-view {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
 .rbc-agenda-view table.rbc-agenda-table {
-  border: 1px solid var(--cal-border) !important;
+  border: none !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100%;
 }
 
+/* วันที่ — column ซ้าย */
 .rbc-agenda-view table.rbc-agenda-table thead > tr > th {
-  border-bottom: 1px solid var(--cal-border) !important;
-  color: var(--text-secondary);
+  border-bottom: 2px solid var(--cal-border) !important;
+  color: var(--text-tertiary);
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 10px 16px !important;
+  background: var(--bg-tertiary);
 }
 
-.rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+.rbc-agenda-date-cell {
+  padding: 16px 16px 8px 16px !important;
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+  color: var(--text-primary) !important;
+  vertical-align: top !important;
+  white-space: nowrap;
   border-top: 1px solid var(--cal-border) !important;
+  background: var(--bg-tertiary) !important;
+  min-width: 160px;
+}
+
+/* เวลา — column กลาง */
+.rbc-agenda-time-cell {
+  padding: 16px 12px 8px 8px !important;
+  font-size: 0.82rem !important;
+  color: var(--text-tertiary) !important;
+  vertical-align: top !important;
+  white-space: nowrap;
+  border-top: 1px solid var(--cal-border) !important;
+  min-width: 120px;
+}
+
+/* event — column ขวา */
+.rbc-agenda-event-cell {
+  padding: 10px 16px 10px 8px !important;
+  vertical-align: top !important;
+  border-top: 1px solid var(--cal-border) !important;
+}
+
+/* row ไม่มี event ในวันนั้น */
+.rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+  border-top: none !important;
   color: var(--text-primary);
+}
+
+/* ข้อความ "ไม่มีกิจกรรม" */
+.rbc-agenda-empty {
+  padding: 48px !important;
+  text-align: center;
+  color: var(--text-tertiary) !important;
+  font-size: 0.9rem;
 }
 
 /* ========== Utility Classes ========== */

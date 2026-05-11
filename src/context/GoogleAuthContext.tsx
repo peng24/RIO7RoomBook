@@ -7,6 +7,7 @@ import {
   type User
 } from 'firebase/auth';
 import { auth, googleProvider } from '../services/firebase';
+import { usePermission } from '../hooks/usePermission';
 
 interface AuthContextType {
   user: User | null;
@@ -15,6 +16,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
+  canEdit: boolean;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +27,8 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const { canEdit, isAdmin } = usePermission(user?.email);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -32,25 +37,8 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
       }
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
-
-  const login = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      // Use the aliased FirebaseGoogleAuthProvider to get the credential
-      const credential = FirebaseGoogleAuthProvider.credentialFromResult(result);
-      const token = credential?.accessToken;
-      if (token) {
-        setAccessToken(token);
-        sessionStorage.setItem('google_access_token', token);
-      }
-    } catch (error) {
-      console.error("Error during login:", error);
-      throw error;
-    }
-  };
 
   useEffect(() => {
     const savedToken = sessionStorage.getItem('google_access_token');
@@ -59,13 +47,28 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, []);
 
+  const login = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const credential = FirebaseGoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken;
+      if (token) {
+        setAccessToken(token);
+        sessionStorage.setItem('google_access_token', token);
+      }
+    } catch (error) {
+      console.error('Error during login:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
       setAccessToken(null);
       sessionStorage.removeItem('google_access_token');
     } catch (error) {
-      console.error("Error during logout:", error);
+      console.error('Error during logout:', error);
       throw error;
     }
   };
@@ -79,6 +82,8 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
         logout,
         isAuthenticated: !!user,
         loading,
+        canEdit,
+        isAdmin,
       }}
     >
       {children}

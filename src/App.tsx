@@ -12,6 +12,7 @@ import AllBookings from './pages/AllBookings';
 import ManageRooms from './pages/ManageRooms';
 import ExportExcel from './pages/ExportExcel';
 import Settings from './pages/Settings';
+import UserManagement from './pages/UserManagement';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="admin/bookings" element={<AllBookings />} />
               <Route path="admin/rooms" element={<ManageRooms />} />
+              <Route path="admin/users" element={<UserManagement />} />
               <Route path="admin/export" element={<ExportExcel />} />
               <Route path="settings" element={<Settings />} />
             </Route>

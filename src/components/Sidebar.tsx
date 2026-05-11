@@ -7,7 +7,8 @@ import {
   LayoutDashboard, 
   List, 
   Settings, 
-  FileSpreadsheet 
+  FileSpreadsheet,
+  Users
 } from 'lucide-react';
 
 const Sidebar: React.FC = () => {
@@ -21,6 +22,7 @@ const Sidebar: React.FC = () => {
     { name: 'ภาพรวม Admin', icon: <LayoutDashboard size={20} />, path: '/admin' },
     { name: 'การจองทั้งหมด', icon: <List size={20} />, path: '/admin/bookings' },
     { name: 'จัดการห้อง', icon: <DoorOpen size={20} />, path: '/admin/rooms' },
+    { name: 'จัดการสิทธิ์', icon: <Users size={20} />, path: '/admin/users' },
     { name: 'ส่งออก Excel', icon: <FileSpreadsheet size={20} />, path: '/admin/export' },
     { name: 'ตั้งค่าระบบ', icon: <Settings size={20} />, path: '/settings' },
   ];

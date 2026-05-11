@@ -4,7 +4,7 @@ import { useAuth } from '../context/GoogleAuthContext';
 import { LogIn } from 'lucide-react';
 
 const BookRoom: React.FC = () => {
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, login, canEdit } = useAuth();
 
   return (
     <div className="max-w-4xl mx-auto py-8">
@@ -14,9 +14,21 @@ const BookRoom: React.FC = () => {
       </div>
 
       {isAuthenticated ? (
-        <div className="bg-[var(--bg-secondary)] rounded-2xl p-8 border border-[var(--border-primary)] shadow-xl">
-          <QuickBook isPage={true} />
-        </div>
+        canEdit ? (
+          <div className="bg-[var(--bg-secondary)] rounded-2xl p-8 border border-[var(--border-primary)] shadow-xl">
+            <QuickBook isPage={true} />
+          </div>
+        ) : (
+          <div className="bg-[var(--bg-secondary)] rounded-2xl p-12 border border-[var(--border-primary)] text-center">
+            <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <LogIn size={32} />
+            </div>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>ไม่มีสิทธิ์เข้าถึง</h2>
+            <p className="mb-8 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
+              คุณต้องได้รับสิทธิ์ในการจองห้องประชุม กรุณาติดต่อ Admin เพื่อขอสิทธิ์
+            </p>
+          </div>
+        )
       ) : (
         <div className="bg-[var(--bg-secondary)] rounded-2xl p-12 border border-[var(--border-primary)] text-center">
           <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">

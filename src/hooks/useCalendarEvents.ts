@@ -65,22 +65,31 @@ export function useCalendarEvents() {
       }
 
       if (holidayEventsResult.status === 'fulfilled') {
-        const formattedHolidays = (holidayEventsResult.value || []).map(event => {
-          const startDate = new Date(event.start?.date || event.start?.dateTime || new Date());
-          let endDate = new Date(event.end?.date || event.end?.dateTime || new Date());
-          if (event.end?.date) endDate = new Date(endDate.getTime() - 1);
+        const formattedHolidays = (holidayEventsResult.value || [])
+          // กรองเฉพาะวันหยุดราชการ — ตัดวันหยุดเอกชนออก
+          .filter(event => !event.summary?.includes('เอกชน'))
+          .map(event => {
+            const startDate = new Date(event.start?.date || event.start?.dateTime || new Date());
+            let endDate = new Date(event.end?.date || event.end?.dateTime || new Date());
+            if (event.end?.date) endDate = new Date(endDate.getTime() - 1);
 
-          return {
-            id: event.id,
-            title: event.summary,
-            start: startDate,
-            end: endDate,
-            location: event.location,
-            description: event.description,
-            resource: 'holiday' as const,
-            allDay: true,
-          };
-        });
+            // ตัด "(ราชการ)" และ "วันหยุดราชการ" ออกจากชื่อ
+            const cleanTitle = (event.summary || '')
+              .replace(/\s*\(ราชการ\)/g, '')
+              .replace(/\s*วันหยุดราชการ/g, '')
+              .trim();
+
+            return {
+              id: event.id,
+              title: cleanTitle,
+              start: startDate,
+              end: endDate,
+              location: event.location,
+              description: event.description,
+              resource: 'holiday' as const,
+              allDay: true,
+            };
+          });
         allFormattedEvents = [...allFormattedEvents, ...formattedHolidays];
       } else {
         console.error('Failed to fetch holidays:', holidayEventsResult.reason);

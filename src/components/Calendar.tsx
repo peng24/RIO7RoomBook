@@ -24,7 +24,7 @@ const localizer = dateFnsLocalizer({
 const MyCalendar: React.FC = () => {
   const [view, setView] = useState<any>(Views.MONTH);
   const { events, refresh, loading: eventsLoading, error } = useCalendarEvents();
-  const { isAuthenticated, accessToken } = useAuth();
+  const { isAuthenticated, accessToken, canEdit } = useAuth();
   const [selectedEvent, setSelectedEvent] = useState<FormattedEvent | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -154,7 +154,7 @@ const MyCalendar: React.FC = () => {
           {eventsLoading && <Loader2 size={18} className="animate-spin text-blue-500" />}
         </div>
         <div className="flex gap-2">
-          {['Day', 'Week', 'Month'].map((v) => (
+          {['Day', 'Week', 'Month', 'Agenda'].map((v) => (
             <button
               key={v}
               onClick={() => setView(v.toLowerCase())}
@@ -165,7 +165,7 @@ const MyCalendar: React.FC = () => {
                   : { background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }
               }
             >
-              {v === 'Day' ? 'วัน' : v === 'Week' ? 'สัปดาห์' : v === 'Month' ? 'เดือน' : v}
+              {v === 'Day' ? 'วัน' : v === 'Week' ? 'สัปดาห์' : v === 'Month' ? 'เดือน' : v === 'Agenda' ? 'กำหนดการ' : v}
             </button>
           ))}
         </div>
@@ -218,7 +218,9 @@ const MyCalendar: React.FC = () => {
               dayHeaderFormat: (date: Date) => `${format(date, 'EEEEที่ d MMMM', { locale: th })} ${date.getFullYear() + 543}`,
               dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) => 
                 `${format(start, 'd MMM', { locale: th })} - ${format(end, 'd MMM', { locale: th })} ${end.getFullYear() + 543}`,
-              agendaDateFormat: (date: Date) => `${format(date, 'd MMMM', { locale: th })} ${date.getFullYear() + 543}`,
+              agendaDateFormat: (date: Date) => `${format(date, 'EEEE', { locale: th })} ${date.getDate()} ${format(date, 'MMMM', { locale: th })} ${date.getFullYear() + 543}`,
+              agendaHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
+                `${format(start, 'd MMM', { locale: th })} – ${format(end, 'd MMM', { locale: th })} ${end.getFullYear() + 543}`,
               timeGutterFormat: (date: Date) => format(date, 'HH:mm', { locale: th }),
               eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) => `${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`,
               agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) => `${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`
@@ -246,18 +248,22 @@ const MyCalendar: React.FC = () => {
                 dateHeader: ({ date, label }: { date: Date; label: string }) => {
                   const holidayName = getHolidayName(date);
                   return (
-                    <div>
-                      <span>{label}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', padding: '3px 0' }}>
+                      <span style={{ fontWeight: holidayName ? 700 : undefined }}>{label}</span>
                       {holidayName && (
                         <div style={{
-                          fontSize: '0.6rem',
+                          fontSize: '0.72rem',
                           color: 'var(--cal-holiday-text)',
-                          fontWeight: 600,
-                          lineHeight: 1.2,
-                          marginTop: '2px',
-                          whiteSpace: 'nowrap',
+                          fontWeight: 700,
+                          lineHeight: 1.4,
+                          marginTop: '3px',
+                          textAlign: 'center',
+                          width: '100%',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          padding: '0 4px',
+                          letterSpacing: '0.01em',
                         }}>
                           {holidayName}
                         </div>
@@ -265,7 +271,34 @@ const MyCalendar: React.FC = () => {
                     </div>
                   );
                 }
-              }
+              },
+              agenda: {
+                event: ({ event }: { event: FormattedEvent }) => (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                      padding: '10px 14px',
+                      borderLeft: '3px solid var(--cal-event-border)',
+                      borderRadius: '0 8px 8px 0',
+                      background: 'var(--cal-event-bg)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => handleSelectEvent(event)}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                      {event.title}
+                    </span>
+                    {event.location && (
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        {event.location}
+                      </span>
+                    )}
+                  </div>
+                ),
+              },
             }}
             style={{ height: '100%' }}
           />
@@ -349,7 +382,7 @@ const MyCalendar: React.FC = () => {
 
             {/* Modal Footer */}
             <div className="px-6 py-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] flex justify-between items-center">
-              {isAuthenticated ? (
+              {canEdit ? (
                 <>
                   <button 
                     onClick={handleDelete}
@@ -392,7 +425,11 @@ const MyCalendar: React.FC = () => {
                 </>
               ) : (
                 <div className="w-full text-center py-1">
-                  <p className="text-xs text-[var(--text-tertiary)]">เข้าสู่ระบบเพื่อแก้ไขหรือลบการจอง</p>
+                  {!isAuthenticated ? (
+                    <p className="text-xs text-[var(--text-tertiary)]">เข้าสู่ระบบเพื่อแก้ไขหรือลบการจอง</p>
+                  ) : (
+                    <p className="text-xs text-[var(--text-tertiary)]">คุณไม่มีสิทธิ์แก้ไขการจอง — ติดต่อ Admin เพื่อขอสิทธิ์</p>
+                  )}
                 </div>
               )}
             </div>
