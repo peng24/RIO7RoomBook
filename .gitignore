@@ -50,3 +50,6 @@ functions/node_modules/
 # Gemini CLI
 .gemini/
 MEMORY.md
+
+# Antigravity Skills v1.0.0
+.agent/

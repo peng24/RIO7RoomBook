@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/GoogleAuthContext';
 import { 
   Calendar, 
   PlusSquare, 
@@ -12,6 +13,8 @@ import {
 } from 'lucide-react';
 
 const Sidebar: React.FC = () => {
+  const { isAdmin } = useAuth();
+  
   const mainMenu = [
     { name: 'ปฏิทินการจอง', icon: <Calendar size={20} />, path: '/' },
     { name: 'จองห้อง', icon: <PlusSquare size={20} />, path: '/book' },
@@ -77,23 +80,25 @@ const Sidebar: React.FC = () => {
           </ul>
         </div>
 
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold mb-3 px-3">ผู้ดูแลระบบ</p>
-          <ul className="space-y-1">
-            {adminMenu.map((item) => (
-              <li key={item.name}>
-                <NavLink
-                  to={item.path}
-                  className={navLinkClass}
-                  style={({ isActive }) => isActive ? activeStyle : {}}
-                >
-                  {item.icon}
-                  <span className="text-sm">{item.name}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {isAdmin && (
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold mb-3 px-3">ผู้ดูแลระบบ</p>
+            <ul className="space-y-1">
+              {adminMenu.map((item) => (
+                <li key={item.name}>
+                  <NavLink
+                    to={item.path}
+                    className={navLinkClass}
+                    style={({ isActive }) => isActive ? activeStyle : {}}
+                  >
+                    {item.icon}
+                    <span className="text-sm">{item.name}</span>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </nav>
 
       {/* Footer */}
