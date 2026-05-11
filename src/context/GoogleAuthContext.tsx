@@ -41,7 +41,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    const savedToken = sessionStorage.getItem('google_access_token');
+    const savedToken = localStorage.getItem('google_access_token');
     if (savedToken) {
       setAccessToken(savedToken);
     }
@@ -54,7 +54,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
       const token = credential?.accessToken;
       if (token) {
         setAccessToken(token);
-        sessionStorage.setItem('google_access_token', token);
+        localStorage.setItem('google_access_token', token);
       }
     } catch (error) {
       console.error('Error during login:', error);
@@ -66,7 +66,7 @@ export const GoogleAuthProvider: React.FC<{ children: ReactNode }> = ({ children
     try {
       await signOut(auth);
       setAccessToken(null);
-      sessionStorage.removeItem('google_access_token');
+      localStorage.removeItem('google_access_token');
     } catch (error) {
       console.error('Error during logout:', error);
       throw error;
