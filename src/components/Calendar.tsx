@@ -60,7 +60,11 @@ const MyCalendar: React.FC = () => {
   };
 
   const handleUpdate = async () => {
-    if (!selectedEvent || !accessToken) return;
+    if (!selectedEvent) return;
+    if (!accessToken) {
+      Swal.fire({ icon: 'warning', title: 'เซสชันหมดอายุ', text: 'กรุณา "ออกจากระบบ" และเข้าสู่ระบบใหม่อีกครั้งเพื่อรับสิทธิ์' });
+      return;
+    }
     setLoading(true);
     Swal.fire({
       title: 'กำลังบันทึก...',
@@ -103,16 +107,26 @@ const MyCalendar: React.FC = () => {
       setIsEditing(false);
       setEditFile(null);
       Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', showConfirmButton: false, timer: 1500 });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating event:', error);
-      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถแก้ไขการจองได้', confirmButtonText: 'ตกลง' });
+      if (error?.response?.status === 401) {
+        Swal.fire({ icon: 'error', title: 'เซสชันหมดอายุ', text: 'กรุณา "ออกจากระบบ" และเข้าสู่ระบบใหม่อีกครั้ง', confirmButtonText: 'ตกลง' });
+      } else if (error?.response?.status === 403) {
+        Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์เข้าถึง (403)', text: 'คุณไม่มีสิทธิ์แก้ไขการจองนี้', confirmButtonText: 'ตกลง' });
+      } else {
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถแก้ไขการจองได้', confirmButtonText: 'ตกลง' });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!selectedEvent || !accessToken) return;
+    if (!selectedEvent) return;
+    if (!accessToken) {
+      Swal.fire({ icon: 'warning', title: 'เซสชันหมดอายุ', text: 'กรุณา "ออกจากระบบ" และเข้าสู่ระบบใหม่อีกครั้งเพื่อรับสิทธิ์' });
+      return;
+    }
     
     const result = await Swal.fire({
       icon: 'warning',
@@ -137,9 +151,15 @@ const MyCalendar: React.FC = () => {
       refresh();
       setSelectedEvent(null);
       Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', showConfirmButton: false, timer: 1500 });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting event:', error);
-      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถลบการจองได้', confirmButtonText: 'ตกลง' });
+      if (error?.response?.status === 401) {
+        Swal.fire({ icon: 'error', title: 'เซสชันหมดอายุ', text: 'กรุณา "ออกจากระบบ" และเข้าสู่ระบบใหม่อีกครั้ง', confirmButtonText: 'ตกลง' });
+      } else if (error?.response?.status === 403) {
+        Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์เข้าถึง (403)', text: 'คุณไม่มีสิทธิ์ลบการจองนี้', confirmButtonText: 'ตกลง' });
+      } else {
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถลบการจองได้', confirmButtonText: 'ตกลง' });
+      }
     } finally {
       setLoading(false);
     }
